@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jadwal AGL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDF0F4; --surface:#FFFFFF; --ink:#15233B; --muted:#5C6B82; --line:#D5DBE5; --soft:#F5F7FA;
+  --pagi:#0F7B8A; --siang:#B86A00; --malam:#4B3FB5; --off:#7C889C; --now:#D62839; --ok:#1E8E5A; --warn:#B86A00;
+  --on-bar:#FFFFFF;
+  --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0E1525; --surface:#172238; --ink:#E8EDF6; --muted:#9AA8BF; --line:#2A3855; --soft:#1C2A45;
+    --pagi:#3CC0D1; --siang:#F0A53A; --malam:#9B8FF5; --off:#6F7C93; --now:#FF6B7A; --ok:#47C98A; --warn:#F0A53A;
+    --on-bar:#0E1525;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:860px;margin:0 auto;padding:16px 14px 40px}
+
+/* top */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.brand{font-weight:800;font-size:15px;letter-spacing:.01em}
+.sync{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--off);flex:none}
+.sync[data-state=ok] .dot{background:var(--ok)}
+.sync[data-state=warn] .dot{background:var(--warn)}
+.sync[data-state=bad] .dot{background:var(--now)}
+.sync[data-state=load] .dot{animation:pulse 1s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.25}to{opacity:1}}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:4px 10px;font-size:12.5px}
+.ghost:hover{background:var(--soft)}
+.notice{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:14px;color:var(--muted)}
+.notice b{color:var(--ink)}
+
+/* heading */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.date-big{font-size:clamp(26px,6.4vw,40px);font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.clock{font-size:clamp(20px,4.6vw,28px);font-weight:600;color:var(--muted)}
+
+/* day strip */
+.days{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin}
+.day{flex:none;width:54px;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:6px 0 7px;text-align:center;position:relative}
+.day small{display:block;font-size:11.5px;color:var(--muted);line-height:1.2}
+.day strong{display:block;font-size:18px;font-weight:700;line-height:1.25}
+.day[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.day[aria-pressed=true] small{color:inherit;opacity:.8}
+.day.is-today::after{content:"";position:absolute;left:50%;bottom:-6px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--now)}
+.day.is-weekend small{color:var(--now)}
+.day[aria-pressed=true].is-weekend small{color:inherit}
+
+/* tabs */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 12px;flex-wrap:wrap}
+.tabs{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:3px}
+.tab{border:0;background:transparent;border-radius:7px;padding:6px 14px;font-weight:600;font-size:13.5px;color:var(--muted)}
+.tab[aria-selected=true]{background:var(--ink);color:var(--surface)}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card + .card{margin-top:12px}
+.summary{font-size:16px;font-weight:600;margin:0 0 4px}
+.sub{font-size:13px;color:var(--muted);margin:0 0 14px}
+.h2{font-size:14px;font-weight:700;margin:0 0 10px}
+
+/* timeline */
+.axis{position:relative;height:18px;margin-bottom:4px}
+.axis span{position:absolute;top:0;transform:translateX(-50%);font-size:11.5px;color:var(--muted)}
+.plot{position:relative}
+.row{margin-bottom:12px}
+.row:last-child{margin-bottom:0}
+.who{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.who .nm{font-weight:600}
+.who .st{margin-left:auto;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.who .st.active{color:var(--ok);font-weight:700}
+.code{display:inline-block;min-width:30px;text-align:center;border-radius:6px;padding:0 6px;font-size:12px;font-weight:700;line-height:20px;color:var(--on-bar);background:var(--off)}
+.track{position:relative;height:30px;border-radius:7px;background-color:var(--soft);
+  background-image:linear-gradient(to right,var(--line) 1px,transparent 1px);background-size:calc(100% / var(--hours)) 100%}
+.fill{position:absolute;top:3px;bottom:3px;border-radius:5px;color:var(--on-bar);font-size:12px;font-weight:600;
+  display:flex;align-items:center;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--off)}
+.fill.done{opacity:.4}
+.fill.active{box-shadow:0 0 0 2px var(--surface),0 0 0 4px currentColor;color:var(--on-bar)}
+.fill.active{outline:2px solid var(--ink);outline-offset:1px;box-shadow:none}
+.c-pagi{background:var(--pagi)} .c-siang{background:var(--siang)} .c-malam{background:var(--malam)}
+.c-off{background:var(--off)}
+.c-unk{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--off)}
+.nowline{position:absolute;top:-22px;bottom:0;width:2px;margin-left:-1px;background:var(--now);pointer-events:none;z-index:2}
+.nowline::before{content:"";position:absolute;top:0;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--now)}
+
+.chips{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.chips li{display:flex;align-items:center;gap:8px;background:var(--soft);border-radius:999px;padding:4px 6px 4px 12px;font-size:13.5px}
+
+.empty{padding:26px 6px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+
+/* matrix */
+.mwrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{padding:7px 8px;text-align:center;font-size:13px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+thead th{font-weight:600;background:var(--surface);position:sticky;top:0}
+thead th button{border:0;background:none;padding:0;font-weight:700;line-height:1.3}
+thead th small{display:block;font-weight:500;color:var(--muted);font-size:11px}
+th.sticky,td.sticky{position:sticky;left:0;text-align:left;background:var(--surface);z-index:1;font-weight:600;border-right:1px solid var(--line);padding-left:12px;padding-right:12px}
+td.today,th.today{background:var(--soft)}
+th.today{box-shadow:inset 0 -3px 0 var(--now)}
+.mc{display:inline-block;min-width:30px;border-radius:6px;padding:0 5px;line-height:22px;font-size:12px;font-weight:700;color:var(--on-bar)}
+td.blank{color:var(--muted)}
+
+/* legend */
+.legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.legend div{display:flex;align-items:center;gap:8px;font-size:13px}
+.legend .code{flex:none}
+.foot{margin-top:10px;font-size:12.5px;color:var(--muted)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">Jadwal AGL</div>
+    <div class="sync" id="sync" data-state="load" aria-live="polite">
+      <span class="dot"></span><span id="syncText">Menghubungkan ke spreadsheet…</span>
+      <button class="ghost" id="refresh" type="button">Segarkan</button>
+    </div>
+  </div>
+
+  <div id="notice"></div>
+
+  <div class="head">
+    <div class="date-big" id="dateBig">&nbsp;</div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <nav class="days" id="days" aria-label="Pilih tanggal"></nav>
+
+  <div class="bar">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-day" aria-selected="true" type="button">Jadwal harian</button>
+      <button class="tab" role="tab" id="tab-all" aria-selected="false" type="button">Semua jadwal</button>
+    </div>
+    <button class="ghost" id="toToday" type="button" hidden>Kembali ke hari ini</button>
+  </div>
+
+  <div id="view"></div>
+
+  <div class="card" style="margin-top:12px">
+    <h2 class="h2">Kode shift</h2>
+    <div class="legend" id="legend"></div>
+    <div class="foot" id="legendFoot"></div>
+  </div>
+</div>
+<noscript>Aplikasi ini membutuhkan JavaScript.</noscript>
+
+<script>
+/* ============ PENGATURAN ============ */
+const CONFIG = {
+  SHEET_ID: "1a1LkxYffa0luMgRG0_aDGEa4IVOhpJ380QBPsTvsosU",
+  SHEET_NAME: "Sheet1",
+  GID: "0",
+  // Opsional: isi dengan link "Publikasikan ke web" (format CSV) jika ingin jalur yang paling stabil.
+  PUBLISHED_CSV_URL: "",
+  TIMEZONE: "Asia/Jakarta",
+  TZ_LABEL: "WIB",
+  REFRESH_SECONDS: 60,
+  // Kode yang berarti tidak bertugas.
+  OFF_CODES: { X: "Libur" },
+  // Nama tampilan untuk kode lain yang tidak punya jam, contoh: { AL: "Cuti" }
+  CODE_LABELS: {}
+};
+
+/* ============ DATA CADANGAN (hanya dipakai jika spreadsheet belum bisa dibaca) ============ */
+const SNAPSHOT = (function(){
+  const dates="21-Sep,22-Sep,23-Sep,24-Sep,25-Sep,26-Sep,27-Sep,28-Sep,29-Sep,30-Sep,1-Oct,2-Oct,3-Oct,4-Oct,5-Oct,6-Oct,7-Oct,8-Oct,9-Oct,10-Oct,11-Oct,12-Oct,13-Oct,14-Oct,15-Oct,16-Oct,17-Oct,18-Oct,19-Oct,20-Oct".split(",");
+  const wd="Mon,Tue,Wed,Thu,Fri,Sat,Sun".split(",");
+  const p=(n,s)=>[n].concat(s.split(","));
+  return [
+    ["NAMA"].concat(dates),
+    [""].concat(dates.map((_,i)=>wd[i%7])),
+    p("Aning Rohyani","BM,BM,BM,BM,X,BM,BM,AG,AG,AI,AI,X,AI,X,X,BM,BM,AI,X,BM,BM,X,SL,BM,AI,X,X,AI,AG,AG"),
+    p("Yusup Subagyo","DN,DN,EG,X,AL,AL,AL,AL,X,CG,CG,CG,EG,DE,DN,DN,X,CO,FP,DN,DN,DN,DN,X,EG,CG,CG,CG,DN,DN"),
+    p("Andre Maulana","X,EG,CG,CG,CG,DE,CG,X,CV,DN,FP,DN,DN,DN,X,CG,CG,DE,CI,CI,EG,X,CG,DN,DN,FP,DN,CO,AL,DN"),
+    p("Siti Nurhasanah","EG,X,DN,FP,DN,DN,CO,DN,DN,X,DN,EQ,DN,DN,CG,X,FP,DN,DN,CG,CI,CG,X,CG,DN,DN,CO,DN,DN,AL"),
+    [""],
+    ["KODE SHIFT","WAKTU"],
+    ["CF","06:00-14:00"],["CG","07:00-15:00"],["EF","06:00-12:00"],["EG","07:00-13:00"],
+    ["CK","11:00-19:00"],["CL","12:00-20:00"],["DN","14:30-22:30"],["FP","16:30-22:30"],
+    ["BM","13:30-22:30"],["AG","07:00-16:00"],["AI","09:00-18:00"],["EQ","17:00-23:00"],["DE","05:30-13:30"]
+  ];
+})();
+
+/* ============ UTIL ============ */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,"0");
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DAYS_ID = ["Minggu","Senin","Selasa","Rabu","Kamis","Jumat","Sabtu"];
+const DAYS_SHORT = ["Min","Sen","Sel","Rab","Kam","Jum","Sab"];
+const MONTHS_ID = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+const MONTH_LOOKUP = {jan:1,feb:2,mar:3,apr:4,may:5,mei:5,jun:6,jul:7,aug:8,agu:8,agt:8,sep:9,oct:10,okt:10,nov:11,dec:12,des:12};
+const WD_LOOKUP = {sun:0,min:0,ahad:0,mon:1,sen:1,tue:2,sel:2,wed:3,rab:3,thu:4,kam:4,fri:5,jum:5,sat:6,sab:6};
+const keyOf = (y,m,d) => `${y}-${pad(m)}-${pad(d)}`;
+const fmtMin = m => `${pad(Math.floor(m/60))}:${pad(m%60)}`;
+
+function nowParts(){
+  const parts = new Intl.DateTimeFormat("en-GB",{timeZone:CONFIG.TIMEZONE,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).formatToParts(new Date());
+  const o = {}; parts.forEach(x => o[x.type] = x.value);
+  let h = +o.hour; if (h === 24) h = 0;
+  return {y:+o.year, m:+o.month, d:+o.day, h, mi:+o.minute, s:+o.second, key:`${o.year}-${o.month}-${o.day}`, minutes:h*60+(+o.minute)};
+}
+const weekdayOf = (y,m,d) => new Date(Date.UTC(y,m-1,d)).getUTCDay();
+const longDate = c => `${DAYS_ID[weekdayOf(c.y,c.m,c.d)]}, ${c.d} ${MONTHS_ID[c.m-1]} ${c.y}`;
+const shortDate = c => `${c.d} ${MONTHS_SHORT[c.m-1]}`;
+
+/* ============ PARSER ============ */
+function parseCSV(text){
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i=0;i<text.length;i++){
+    const ch = text[i];
+    if (q){
+      if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
+      else cur += ch;
+    } else if (ch === '"') q = true;
+    else if (ch === ","){ row.push(cur); cur = ""; }
+    else if (ch === "\n" || ch === "\r"){
+      if (ch === "\r" && text[i+1] === "\n") i++;
+      row.push(cur); rows.push(row); row = []; cur = "";
+    } else cur += ch;
+  }
+  if (cur !== "" || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+
+function parseHeaderDate(s){
+  s = s.trim(); let m;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return {d:+m[3], m:+m[2], y:+m[1]};
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/))) return {d:+m[1], m:+m[2], y:m[3] ? (+m[3] < 100 ? 2000+ +m[3] : +m[3]) : null};
+  if ((m = s.match(/^(\d{1,2})[\s\-\.]*([A-Za-z]{3,})[\s\-\.,]*(\d{2,4})?$/))){
+    const mon = MONTH_LOOKUP[m[2].slice(0,3).toLowerCase()];
+    if (mon) return {d:+m[1], m:mon, y:m[3] ? (+m[3] < 100 ? 2000+ +m[3] : +m[3]) : null};
+  }
+  return null;
+}
+
+function assignYears(cols){
+  if (cols.every(c => c.y)) return;
+  const now = nowParts();
+  const build = base => {
+    let y = base, prev = null;
+    return cols.map(c => {
+      if (c.y){ y = c.y; prev = c.m; return y; }
+      if (prev !== null && c.m < prev) y++;
+      prev = c.m; return y;
+    });
+  };
+  let best = null;
+  [now.y-1, now.y, now.y+1].forEach(base => {
+    const ys = build(base);
+    let score = 0;
+    cols.forEach((c,i) => { if (c.wd !== null && weekdayOf(ys[i],c.m,c.d) === c.wd) score++; });
+    const dist = Math.abs(Date.UTC(ys[0],cols[0].m-1,cols[0].d) - Date.UTC(now.y,now.m-1,now.d));
+    if (!best || score > best.score || (score === best.score && dist < best.dist)) best = {ys, score, dist};
+  });
+  cols.forEach((c,i) => c.y = best.ys[i]);
+}
+
+function parseSheet(rows){
+  const cell = (r,c) => ((rows[r] && rows[r][c]) || "").toString().trim();
+  const hdr = rows.findIndex(r => (r[0] || "").toString().trim().toUpperCase() === "NAMA");
+  if (hdr < 0) throw new Error('Baris dengan judul "NAMA" tidak ditemukan');
+  const wkRow = rows[hdr+1] || [];
+  const hasWk = wkRow.some((v,i) => i>0 && WD_LOOKUP[(v||"").toString().trim().slice(0,3).toLowerCase()] !== undefined);
+  const dates = [];
+  for (let c=1;c<(rows[hdr]||[]).length;c++){
+    const p = parseHeaderDate(cell(hdr,c));
+    if (p){
+      const w = hasWk ? WD_LOOKUP[cell(hdr+1,c).slice(0,3).toLowerCase()] : undefined;
+      dates.push({c, d:p.d, m:p.m, y:p.y, wd: w === undefined ? null : w});
+    }
+  }
+  if (!dates.length) throw new Error("Tanggal pada baris header tidak terbaca");
+  assignYears(dates);
+  dates.forEach(x => x.key = keyOf(x.y,x.m,x.d));
+
+  const people = [];
+  for (let r = hdr + (hasWk ? 2 : 1); r < rows.length; r++){
+    const name = cell(r,0);
+    if (!name) break;
+    const cells = {};
+    dates.forEach(x => { cells[x.key] = cell(r,x.c).toUpperCase(); });
+    people.push({name, cells});
+  }
+
+  const shifts = {};
+  const lg = rows.findIndex(r => (r[0] || "").toString().trim().toUpperCase() === "KODE SHIFT");
+  if (lg >= 0){
+    for (let r = lg+1; r < rows.length; r++){
+      const code = cell(r,0).toUpperCase();
+      if (!code) break;
+      const m = cell(r,1).match(/(\d{1,2})[:.](\d{2})\s*[-–—]\s*(\d{1,2})[:.](\d{2})/);
+      if (m){
+        const start = +m[1]*60 + +m[2]; let end = +m[3]*60 + +m[4];
+        if (end <= start) end += 1440;
+        shifts[code] = {start, end};
+      }
+    }
+  }
+  return {dates, people, shifts};
+}
+
+/* ============ KLASIFIKASI ============ */
+let DATA = null;
+function classify(code){
+  if (!code) return {kind:"none"};
+  if (CONFIG.OFF_CODES[code]) return {kind:"off", label:CONFIG.OFF_CODES[code]};
+  const s = DATA.shifts[code];
+  if (s){
+    const mid = (s.start + s.end)/2/60;
+    return {kind:"work", shift:s, fam: mid < 12 ? "pagi" : mid < 17 ? "siang" : "malam"};
+  }
+  return {kind:"unk", label:CONFIG.CODE_LABELS[code] || null};
+}
+const famClass = info => info.kind === "work" ? "c-"+info.fam : info.kind === "off" ? "c-off" : "c-unk";
+
+/* ============ STATE ============ */
+const state = {selected:null, follow:true, view:"day", todayKey:null, lastMinute:-1, lastText:null,
+               usingSnapshot:false, scrollDay:true, scrollMatrix:true};
+
+/* ============ RENDER ============ */
+function renderHead(){
+  const c = DATA && DATA.dates.find(d => d.key === state.selected);
+  if (c) $("#dateBig").textContent = longDate(c);
+  else {
+    const [y,m,d] = state.selected.split("-").map(Number);
+    $("#dateBig").textContent = longDate({y,m,d});
+  }
+  $("#toToday").hidden = state.selected === state.todayKey;
+}
+
+function renderDays(){
+  const box = $("#days");
+  box.innerHTML = DATA.dates.map(c => {
+    const wd = weekdayOf(c.y,c.m,c.d);
+    const cls = ["day", c.key === state.todayKey ? "is-today" : "", (wd===0||wd===6) ? "is-weekend" : ""].join(" ");
+    return `<button type="button" class="${cls}" data-key="${c.key}" aria-pressed="${c.key === state.selected}" aria-label="${esc(longDate(c))}${c.key===state.todayKey?" (hari ini)":""}">
+      <small>${DAYS_SHORT[wd]}</small><strong>${c.d}</strong><small>${MONTHS_SHORT[c.m-1]}</small></button>`;
+  }).join("");
+  if (state.scrollDay){
+    const el = box.querySelector('[aria-pressed="true"]');
+    if (el) box.scrollLeft = el.offsetLeft - box.clientWidth/2 + el.offsetWidth/2;
+    state.scrollDay = false;
+  }
+}
+
+function axisBounds(){
+  let lo = Infinity, hi = -Infinity;
+  Object.values(DATA.shifts).forEach(s => { lo = Math.min(lo,s.start); hi = Math.max(hi,s.end); });
+  if (!isFinite(lo)){ lo = 6*60; hi = 22*60; }
+  return {lo: Math.floor(lo/60)*60, hi: Math.ceil(hi/60)*60};
+}
+
+function renderDay(){
+  const view = $("#view");
+  const col = DATA.dates.find(d => d.key === state.selected);
+  if (!col){
+    const a = DATA.dates[0], b = DATA.dates[DATA.dates.length-1];
+    view.innerHTML = `<div class="card"><div class="empty"><b>Belum ada jadwal untuk tanggal ini</b>Spreadsheet memuat jadwal ${shortDate(a)} – ${shortDate(b)} ${b.y}. Tambahkan kolom tanggal di spreadsheet dan halaman ini akan memperbaruinya otomatis.</div></div>`;
+    return;
+  }
+  const now = nowParts();
+  const isToday = state.selected === now.key;
+  const entries = DATA.people.map(p => ({name:p.name, code:p.cells[state.selected] || "", info:classify(p.cells[state.selected] || "")}));
+  const working = entries.filter(e => e.info.kind === "work").sort((a,b) => a.info.shift.start - b.info.shift.start || a.info.shift.end - b.info.shift.end || a.name.localeCompare(b.name));
+  const others = entries.filter(e => e.info.kind !== "work");
+
+  working.forEach(e => {
+    const s = e.info.shift;
+    e.status = !isToday ? "" : now.minutes < s.start ? "upcoming" : now.minutes < s.end ? "active" : "done";
+  });
+
+  // ringkasan
+  let summary, sub = "";
+  if (!working.length){
+    summary = "Tidak ada yang bertugas"; sub = "Tidak ada shift terjadwal pada tanggal ini.";
+  } else if (isToday){
+    const active = working.filter(e => e.status === "active");
+    const next = working.filter(e => e.status === "upcoming");
+    if (active.length){
+      summary = "Bertugas sekarang: " + active.map(e => e.name).join(", ");
+      sub = `${working.length} orang terjadwal hari ini.`;
+    } else if (next.length){
+      const t = next[0].info.shift.start;
+      summary = "Belum ada yang bertugas saat ini";
+      sub = `Shift berikutnya mulai ${fmtMin(t)}: ${next.filter(e => e.info.shift.start === t).map(e => e.name).join(", ")}.`;
+    } else {
+      summary = "Semua shift hari ini sudah selesai";
+      sub = `${working.length} orang bertugas hari ini.`;
+    }
+  } else {
+    summary = `${working.length} orang bertugas`;
+    sub = state.selected < now.key ? "Jadwal tanggal yang sudah lewat." : "Jadwal tanggal mendatang.";
+  }
+
+  let html = `<div class="card"><p class="summary">${esc(summary)}</p><p class="sub">${esc(sub)}</p>`;
+  if (working.length){
+    const {lo,hi} = axisBounds();
+    const hours = (hi-lo)/60;
+    let ticks = "";
+    for (let m=lo; m<=hi; m+=120) ticks += `<span style="left:${(m-lo)/(hi-lo)*100}%">${pad(m/60)}</span>`;
+    html += `<div class="axis" aria-hidden="true">${ticks}</div><div class="plot" style="--hours:${hours}">`;
+    working.forEach(e => {
+      const s = e.info.shift;
+      const left = (s.start-lo)/(hi-lo)*100, width = (Math.min(s.end,hi)-s.start)/(hi-lo)*100;
+      const stTxt = e.status === "active" ? `<span class="st active">Bertugas · sampai ${fmtMin(s.end%1440)}</span>`
+                  : e.status === "upcoming" ? `<span class="st">Mulai ${fmtMin(s.start)}</span>`
+                  : e.status === "done" ? `<span class="st">Selesai</span>` : "";
+      html += `<div class="row"><div class="who"><span class="nm">${esc(e.name)}</span><span class="code ${famClass(e.info)}">${esc(e.code)}</span>${stTxt}</div>
+        <div class="track"><div class="fill ${famClass(e.info)} ${e.status}" style="left:${left}%;width:${width}%">${fmtMin(s.start)}–${fmtMin(s.end%1440)}</div></div></div>`;
+    });
+    if (isToday && now.minutes >= lo && now.minutes <= hi)
+      html += `<div class="nowline" style="left:${(now.minutes-lo)/(hi-lo)*100}%" title="Sekarang ${fmtMin(now.minutes)}"></div>`;
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  if (others.length){
+    html += `<div class="card"><h2 class="h2">Tidak bertugas</h2><ul class="chips">` + others.map(e => {
+      let label, title = "";
+      if (e.info.kind === "off") label = e.info.label;
+      else if (e.info.kind === "unk"){ label = e.info.label ? `${e.code} · ${e.info.label}` : e.code; title = e.info.label ? "" : "Kode ini belum ada di tabel KODE SHIFT"; }
+      else label = "Belum diisi";
+      return `<li><span>${esc(e.name)}</span><span class="code ${famClass(e.info)}" title="${esc(title)}">${esc(label)}</span></li>`;
+    }).join("") + `</ul></div>`;
+  }
+  view.innerHTML = html;
+}
+
+function renderMatrix(){
+  const view = $("#view");
+  const prev = view.querySelector(".mwrap");
+  const prevScroll = prev ? prev.scrollLeft : null;
+  let h = `<div class="mwrap"><table><thead><tr><th class="sticky">Nama</th>`;
+  DATA.dates.forEach(c => {
+    const wd = weekdayOf(c.y,c.m,c.d);
+    h += `<th class="${c.key===state.todayKey?"today":""}" data-key="${c.key}"><button type="button" data-key="${c.key}" title="${esc(longDate(c))}">${c.d} ${MONTHS_SHORT[c.m-1]}<small>${DAYS_SHORT[wd]}</small></button></th>`;
+  });
+  h += `</tr></thead><tbody>`;
+  DATA.people.forEach(p => {
+    h += `<tr><td class="sticky">${esc(p.name)}</td>`;
+    DATA.dates.forEach(c => {
+      const code = p.cells[c.key] || "";
+      const info = classify(code);
+      const t = c.key === state.todayKey ? "today" : "";
+      h += code ? `<td class="${t}"><span class="mc ${famClass(info)}">${esc(code)}</span></td>` : `<td class="blank ${t}">–</td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div>`;
+  view.innerHTML = h;
+  const w = view.querySelector(".mwrap");
+  if (prevScroll !== null && !state.scrollMatrix) w.scrollLeft = prevScroll;
+  else {
+    const th = w.querySelector("th.today") || w.querySelector(`th[data-key="${state.selected}"]`);
+    if (th) w.scrollLeft = th.offsetLeft - w.clientWidth/2 + th.offsetWidth/2;
+    state.scrollMatrix = false;
+  }
+}
+
+function renderLegend(){
+  const items = Object.entries(DATA.shifts).sort((a,b) => a[1].start - b[1].start || a[0].localeCompare(b[0]));
+  let h = items.map(([code,s]) => {
+    const info = classify(code);
+    return `<div><span class="code ${famClass(info)}">${esc(code)}</span><span>${fmtMin(s.start)}–${fmtMin(s.end%1440)}</span></div>`;
+  }).join("");
+  Object.entries(CONFIG.OFF_CODES).forEach(([c,l]) => { h += `<div><span class="code c-off">${esc(c)}</span><span>${esc(l)}</span></div>`; });
+  $("#legend").innerHTML = h;
+
+  const known = new Set([...Object.keys(DATA.shifts), ...Object.keys(CONFIG.OFF_CODES)]);
+  const unknown = new Set();
+  DATA.people.forEach(p => Object.values(p.cells).forEach(v => { if (v && !known.has(v)) unknown.add(v); }));
+  $("#legendFoot").textContent = unknown.size
+    ? `Kode lain di jadwal yang belum punya jam di tabel KODE SHIFT: ${[...unknown].sort().join(", ")}. Tambahkan di spreadsheet agar jamnya tampil otomatis.`
+    : "";
+}
+
+function renderView(){ state.view === "day" ? renderDay() : renderMatrix(); }
+function renderAll(){
+  if (!DATA) return;
+  renderHead(); renderDays(); renderView(); renderLegend();
+}
+
+/* ============ SINKRONISASI ============ */
+function setSync(st, text){
+  $("#sync").dataset.state = st;
+  $("#syncText").textContent = text;
+}
+function setNotice(html){ $("#notice").innerHTML = html ? `<div class="notice">${html}</div>` : ""; }
+
+function loadJsonp(){
+  return new Promise((resolve, reject) => {
+    const cb = "__agl_" + Date.now();
+    const s = document.createElement("script");
+    const done = () => { clearTimeout(timer); delete window[cb]; s.remove(); };
+    const timer = setTimeout(() => { done(); reject(new Error("JSONP: waktu habis")); }, 15000);
+    window[cb] = resp => {
+      done();
+      try{
+        if (!resp || resp.status !== "ok") throw new Error((resp && resp.errors && resp.errors[0] && resp.errors[0].detailed_message) || "respons tidak valid");
+        const rows = resp.table.rows.map(r => (r.c || []).map(c => c ? (c.f != null ? c.f : (c.v != null ? c.v : "")) : ""));
+        resolve(rows);
+      }catch(e){ reject(new Error("JSONP: " + e.message)); }
+    };
+    s.onerror = () => { done(); reject(new Error("JSONP: gagal dimuat")); };
+    s.src = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&headers=0&sheet=${encodeURIComponent(CONFIG.SHEET_NAME)}&_=${Date.now()}`;
+    document.head.appendChild(s);
+  });
+}
+async function loadCsv(url){
+  const res = await fetch(url, {cache:"no-store"});
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return parseCSV(await res.text());
+}
+function sources(){
+  const t = Date.now(), id = CONFIG.SHEET_ID, list = [];
+  if (CONFIG.PUBLISHED_CSV_URL){
+    const u = CONFIG.PUBLISHED_CSV_URL + (CONFIG.PUBLISHED_CSV_URL.includes("?") ? "&" : "?") + "_=" + t;
+    list.push({label:"CSV terbit", load:() => loadCsv(u)});
+  }
+  list.push({label:"Ekspor CSV", load:() => loadCsv(`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${CONFIG.GID}&_=${t}`)});
+  list.push({label:"Query CSV", load:() => loadCsv(`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&headers=0&sheet=${encodeURIComponent(CONFIG.SHEET_NAME)}&_=${t}`)});
+  list.push({label:"Query JSONP", load:loadJsonp});
+  return list;
+}
+
+let fetching = false, preferred = null;
+async function sync(manual){
+  if (fetching) return;
+  fetching = true;
+  if (manual || !DATA) setSync("load","Menghubungkan ke spreadsheet…");
+  const errors = [];
+  let list = sources();
+  if (preferred){ list = list.filter(s => s.label === preferred).concat(list.filter(s => s.label !== preferred)); }
+  for (const src of list){
+    try{
+      const rows = await src.load();
+      const parsed = parseSheet(rows);
+      const text = JSON.stringify(rows);
+      if (text !== state.lastText){
+        state.lastText = text;
+        DATA = parsed; state.usingSnapshot = false;
+        try{ localStorage.setItem("agl.sheet.rows", text); localStorage.setItem("agl.sheet.time", String(Date.now())); }catch(e){}
+        renderAll();
+      }
+      state.usingSnapshot = false;
+      preferred = src.label;
+      setNotice("");
+      const n = nowParts();
+      setSync("ok", `Tersinkron ${pad(n.h)}:${pad(n.mi)}:${pad(n.s)}`);
+      fetching = false; return;
+    }catch(e){ errors.push(`${src.label}: ${e.message || e}`); }
+  }
+  fetching = false;
+  const detail = esc(errors.join(" | "));
+  const hint = `Buka file ini langsung di browser (Chrome/Safari) atau dari hosting, bukan dari pratinjau di dalam Claude. Jika tetap gagal, pakai “Publikasikan ke web” (CSV) dan isi <code>PUBLISHED_CSV_URL</code>. <span style="opacity:.8">Detail: ${detail}</span>`;
+  if (state.usingSnapshot){
+    setSync("bad","Belum terhubung · memakai data cadangan");
+    setNotice(`<b>Belum bisa membaca spreadsheet.</b> Data yang tampil adalah salinan cadangan dan bisa berbeda dari spreadsheet. ${hint}`);
+  } else {
+    let when = "";
+    try{ const t = +localStorage.getItem("agl.sheet.time"); if (t){ const d = new Date(t); when = ` · data tersimpan ${pad(d.getHours())}:${pad(d.getMinutes())}`; } }catch(e){}
+    setSync("warn","Gagal sinkron" + when);
+    setNotice(`<b>Gagal memperbarui dari spreadsheet.</b> Menampilkan data terakhir yang berhasil dibaca; akan dicoba lagi otomatis. ${hint}`);
+  }
+}
+
+/* ============ WAKTU BERJALAN ============ */
+function tick(){
+  const n = nowParts();
+  $("#clock").textContent = `${pad(n.h)}:${pad(n.mi)}:${pad(n.s)} ${CONFIG.TZ_LABEL}`;
+  if (n.key !== state.todayKey){
+    state.todayKey = n.key;
+    if (state.follow){ state.selected = n.key; state.scrollDay = true; state.scrollMatrix = true; }
+    state.lastMinute = n.minutes;
+    renderAll();
+  } else if (n.minutes !== state.lastMinute){
+    state.lastMinute = n.minutes;
+    if (DATA && state.view === "day") renderDay();
+  }
+}
+
+/* ============ INTERAKSI ============ */
+function selectDate(key){
+  state.selected = key;
+  state.follow = key === state.todayKey;
+  state.scrollDay = true;
+  renderAll();
+}
+function setView(v){
+  state.view = v;
+  $("#tab-day").setAttribute("aria-selected", v === "day");
+  $("#tab-all").setAttribute("aria-selected", v === "all");
+  state.scrollMatrix = true;
+  renderView();
+}
+$("#days").addEventListener("click", e => { const b = e.target.closest("[data-key]"); if (b) selectDate(b.dataset.key); });
+$("#view").addEventListener("click", e => {
+  const b = e.target.closest("thead button[data-key]");
+  if (b){ selectDate(b.dataset.key); setView("day"); }
+});
+$("#toToday").addEventListener("click", () => { state.follow = true; state.selected = state.todayKey; state.scrollDay = true; renderAll(); });
+$("#tab-day").addEventListener("click", () => setView("day"));
+$("#tab-all").addEventListener("click", () => setView("all"));
+$("#refresh").addEventListener("click", () => sync(true));
+document.addEventListener("visibilitychange", () => { if (!document.hidden){ tick(); sync(false); } });
+window.addEventListener("online", () => sync(true));
+
+/* ============ MULAI ============ */
+(function init(){
+  const n = nowParts();
+  state.todayKey = n.key; state.selected = n.key; state.lastMinute = n.minutes;
+  let loaded = false;
+  try{
+    const cached = localStorage.getItem("agl.sheet.rows");
+    if (cached){ DATA = parseSheet(JSON.parse(cached)); state.lastText = cached; loaded = true; }
+  }catch(e){}
+  if (!loaded){ DATA = parseSheet(SNAPSHOT); state.usingSnapshot = true; }
+  tick(); renderAll();
+  sync(true);
+  setInterval(tick, 1000);
+  setInterval(() => sync(false), CONFIG.REFRESH_SECONDS * 1000);
+})();
+</script>
+</body>
+</html>
