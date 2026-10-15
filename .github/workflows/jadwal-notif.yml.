@@ -1,0 +1,27 @@
+name: Notifikasi Jadwal Leader
+
+on:
+  schedule:
+    - cron: '0 14 * * *'   # 14:00 UTC = 21:00 WIB
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Hanya tampilkan pesan di log, jangan kirim ke WhatsApp'
+        type: boolean
+        default: true
+
+jobs:
+  kirim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Kirim jadwal ke grup WhatsApp
+        run: node notify.js
+        env:
+          FONNTE_TOKEN: ${{ secrets.FONNTE_TOKEN }}
+          WA_GROUP_ID: '120363298066478605@g.us'
+          MODE_KIRIM: besok
+          DRY_RUN: ${{ inputs.dry_run }}
