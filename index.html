@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Jadwal AGL</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#EDF0F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1525" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Jadwal AGL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -128,7 +137,7 @@ td.blank{color:var(--muted)}
 <body>
 <div class="wrap">
   <div class="top">
-    <div class="brand">Jadwal AGL</div>
+    <div class="brand">Jadwal AGL <button class="ghost" id="install" type="button" hidden style="margin-left:8px">Pasang aplikasi</button></div>
     <div class="sync" id="sync" data-state="load" aria-live="polite">
       <span class="dot"></span><span id="syncText">Menghubungkan ke spreadsheet…</span>
       <button class="ghost" id="refresh" type="button">Segarkan</button>
@@ -136,6 +145,7 @@ td.blank{color:var(--muted)}
   </div>
 
   <div id="notice"></div>
+  <div id="iosHint" class="notice" hidden>Untuk memasang di iPhone/iPad: ketuk ikon <b>Bagikan</b> di Safari, lalu pilih <b>Tambah ke Layar Utama</b>. <button class="ghost" id="iosClose" type="button" style="margin-left:6px">Tutup</button></div>
 
   <div class="head">
     <div class="date-big" id="dateBig">&nbsp;</div>
@@ -638,6 +648,29 @@ window.addEventListener("online", () => sync(true));
   sync(true);
   setInterval(tick, 1000);
   setInterval(() => sync(false), CONFIG.REFRESH_SECONDS * 1000);
+})();
+
+/* ============ PWA ============ */
+(function(){
+  if ("serviceWorker" in navigator){
+    window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+  }
+  var standalone = function(){ return (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true; };
+  var btn = document.getElementById("install"), hint = document.getElementById("iosHint"), prompt = null;
+  if (standalone()) return;
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); prompt = e; btn.hidden = false; });
+  window.addEventListener("appinstalled", function(){ prompt = null; btn.hidden = true; hint.hidden = true; });
+  btn.addEventListener("click", function(){
+    if (!prompt) return;
+    prompt.prompt();
+    prompt.userChoice.then(function(){ prompt = null; btn.hidden = true; });
+  });
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var dismissed = false; try{ dismissed = localStorage.getItem("agl.iosHint") === "1"; }catch(e){}
+  if (ios && !dismissed) hint.hidden = false;
+  document.getElementById("iosClose").addEventListener("click", function(){
+    hint.hidden = true; try{ localStorage.setItem("agl.iosHint","1"); }catch(e){}
+  });
 })();
 </script>
 </body>
