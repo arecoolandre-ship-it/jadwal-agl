@@ -2,7 +2,7 @@ name: Notifikasi Jadwal Leader
 
 on:
   schedule:
-    - cron: '0 14 * * *'   # 14:00 UTC = 21:00 WIB
+    - cron: '3 11 * * *'   # 11:03 UTC = 18:03 WIB
   workflow_dispatch:
     inputs:
       dry_run:
