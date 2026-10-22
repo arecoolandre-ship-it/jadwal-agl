@@ -9,6 +9,11 @@ const TZ = 'Asia/Jakarta';
 const OFF_CODES = { X: 'Libur' };
 const CODE_LABELS = {};                                    // contoh: { AL: 'Cuti' }
 
+// Pesan ditahan Fonnte sampai jam ini (WIB), supaya tidak terpengaruh telat-nya GitHub Actions.
+const JAM_KIRIM_WIB = 21;
+// Kalau jam kirim masih lebih dari sekian jam lagi, kirim langsung (anggap run tidak wajar).
+const MAKS_TUNDA_JAM = 6;
+
 const HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 const BLN = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, mei: 5, jun: 6, jul: 7, aug: 8, agu: 8, agt: 8, sep: 9, oct: 10, okt: 10, nov: 11, dec: 12, des: 12 };
@@ -38,6 +43,16 @@ function tanggalTarget(now = Date.now(), mode = MODE) {
   new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' })
     .formatToParts(t).forEach(p => { o[p.type] = +p.value; });
   return { d: o.day, m: o.month, y: o.year, wd: new Date(Date.UTC(o.year, o.month - 1, o.day)).getUTCDay() };
+}
+
+// Unix timestamp (detik) untuk jam kirim hari ini (WIB), atau null kalau pesan sebaiknya dikirim langsung.
+// Fonnte hanya menerima waktu di masa depan, jadi kalau jam kirim sudah lewat -> null.
+function waktuJadwal(now = Date.now()) {
+  const t = tanggalTarget(now, 'hari_ini');                       // tanggal hari ini menurut WIB
+  const kirimMs = Date.UTC(t.y, t.m - 1, t.d, JAM_KIRIM_WIB - 7, 0, 0); // WIB = UTC+7
+  const selisih = kirimMs - now;
+  if (selisih > 60 * 1000 && selisih <= MAKS_TUNDA_JAM * 3600 * 1000) return Math.floor(kirimMs / 1000);
+  return null;
 }
 
 function headerDM(s) {
@@ -105,15 +120,17 @@ function bangunPesan(rows, target, mode = MODE) {
   return baris.join('\n').replace(/\n+$/, '');
 }
 
-async function kirimWA(pesan) {
+async function kirimWA(pesan, schedule) {
   const token = process.env.FONNTE_TOKEN;
   const target = process.env.WA_GROUP_ID;
   if (!token) throw new Error('FONNTE_TOKEN belum diisi di GitHub Secrets.');
   if (!target) throw new Error('WA_GROUP_ID belum diisi.');
+  const data = { target, message: pesan };
+  if (schedule) data.schedule = String(schedule);          // unix timestamp (detik)
   const res = await fetch('https://api.fonnte.com/send', {
     method: 'POST',
     headers: { Authorization: token },
-    body: new URLSearchParams({ target, message: pesan })
+    body: new URLSearchParams(data)
   });
   const body = await res.text();
   console.log(`Fonnte: HTTP ${res.status} ${body}`);
@@ -128,10 +145,15 @@ async function main() {
   if (!res.ok) throw new Error(`Gagal membaca spreadsheet: HTTP ${res.status}. Pastikan akses "Siapa saja yang memiliki link".`);
   const pesan = bangunPesan(parseCSV(await res.text()), tanggalTarget());
   console.log('--- Pesan ---\n' + pesan + '\n-------------');
+
+  const jadwalKirim = waktuJadwal();
+  if (jadwalKirim) console.log(`Pesan akan ditampilkan di grup pukul ${pad(JAM_KIRIM_WIB)}:00 WIB (unix ${jadwalKirim}).`);
+  else console.log('Pesan dikirim sekarang (jam kirim sudah lewat atau masih terlalu jauh).');
+
   if (process.env.DRY_RUN === 'true') { console.log('DRY_RUN aktif: tidak dikirim ke WhatsApp.'); return; }
-  await kirimWA(pesan);
-  console.log('Terkirim.');
+  await kirimWA(pesan, jadwalKirim);
+  console.log('Terkirim ke Fonnte.');
 }
 
 if (require.main === module) main().catch(e => { console.error('ERROR:', e.message); process.exit(1); });
-module.exports = { parseCSV, tanggalTarget, bangunPesan };
+module.exports = { parseCSV, tanggalTarget, bangunPesan, waktuJadwal };
