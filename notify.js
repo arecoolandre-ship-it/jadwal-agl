@@ -10,7 +10,7 @@ const OFF_CODES = { X: 'Libur' };
 const CODE_LABELS = {};                                    // contoh: { AL: 'Cuti' }
 
 // Pesan ditahan Fonnte sampai jam ini (WIB), supaya tidak terpengaruh telat-nya GitHub Actions.
-const JAM_KIRIM_WIB = 21;
+const JAM_KIRIM_WIB = 19;
 // Kalau jam kirim masih lebih dari sekian jam lagi, kirim langsung (anggap run tidak wajar).
 const MAKS_TUNDA_JAM = 6;
 
