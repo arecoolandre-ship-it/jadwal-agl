@@ -2,7 +2,7 @@ name: Notifikasi Jadwal Leader
 
 on:
   schedule:
-    - cron: '3 11 * * *'   # 11:03 UTC = 18:03 WIB
+       - cron: '3 9 * * *'   # 09:03 UTC = 16:03 WIB, pesan ditahan Fonnte sampai 19:00 WIB
   workflow_dispatch:
     inputs:
       dry_run:
